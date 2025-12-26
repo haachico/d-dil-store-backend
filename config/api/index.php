@@ -4,7 +4,6 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
@@ -12,6 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require __DIR__ . '/db_config.php';
 require __DIR__ . '/Procucts.php';
+require __DIR__ . '/Auth.php';  // ← Add this
+
 
 $request = $_GET['request'] ?? '';
 $parts = explode('/', trim($request, '/'));
@@ -20,13 +21,34 @@ $class = $parts[0] ?? '';
 $method = $parts[1] ?? '';
 
 try {
-    if ($class == 'Products' && $method == 'getAllProducts') {
+    // AUTH ROUTES
+    if ($class == 'Auth' && $method == 'register') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $auth = new Auth($conn);  // ← Create Auth instance
+        $result = $auth->register(
+            $data['email'],
+            $data['password'],
+            $data['firstName'] ?? '',
+            $data['lastName'] ?? ''
+        );
+        echo json_encode($result);
+    }
+    
+    else if ($class == 'Auth' && $method == 'login') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $auth = new Auth($conn);  // ← Create Auth instance
+        $result = $auth->login($data['email'], $data['password']);
+        echo json_encode($result);
+    }
+    
+    // PRODUCTS ROUTES
+    else if ($class == 'Products' && $method == 'getAllProducts') {
         $api = new Products($conn);
         $products = $api->getAllProducts();
-        
-        http_response_code(200);
         echo json_encode(['success' => true, 'data' => $products]);
-    } else {
+    }
+    
+    else {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
     }
