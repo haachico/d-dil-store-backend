@@ -9,10 +9,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-require __DIR__ . '/db_config.php';
-require __DIR__ . '/Procucts.php';
-require __DIR__ . '/Auth.php';  // ← Add this
+require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/Procucts.php';
+require_once __DIR__ . '/Auth.php';
+require_once __DIR__ . '/JwtHelper.php';
 
+// Helper function to get token from request
+function getTokenFromRequest() {
+    $headers = getallheaders();
+    if (isset($headers['Authorization'])) {
+        $parts = explode(' ', $headers['Authorization']);
+        if (count($parts) == 2 && $parts[0] == 'Bearer') {
+            return $parts[1];
+        }
+    }
+    return null;
+}
+
+// Helper function to verify token
+function requireAuth() {
+    $token = getTokenFromRequest();
+    $jwtHelper = new JwtHelper();
+    $verified = $jwtHelper->verifyToken($token);
+    
+    if (!$verified['valid']) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Unauthorized: ' . $verified['message']]);
+        exit();
+    }
+    
+    return $verified;
+}
 
 $request = $_GET['request'] ?? '';
 $parts = explode('/', trim($request, '/'));
@@ -49,24 +76,57 @@ try {
     } 
 
     else if ($class == 'Products' && $method == 'addWishlistItem') {
+        $user = requireAuth();  // Check token
         $data = json_decode(file_get_contents('php://input'), true);
         $api = new Products($conn);
-        $result = $api->addWishlistItem($data['userId'], $data['productId']);
+        $result = $api->addWishlistItem($user['userId'], $data['productId']);
         echo json_encode($result);
     }   
 
-    else if ($class == 'Products' && $method == 'getWishListITems') {
-        $data = json_decode(file_get_contents('php://input'), true);
-
+    else if ($class == 'Products' && $method == 'getWishlistItems') {
+        $user = requireAuth();  // Check token
         $api = new Products($conn);
-        $result = $api->getWishListITems($data['userId']);
+        $result = $api->getWishlistItems($user['userId']);
         echo json_encode($result);
     }
     
     else if ($class == 'Products' && $method == 'removeWishlistItem') {
+      $user = requireAuth();  // Check token
         $data = json_decode(file_get_contents('php://input'), true);
         $api = new Products($conn);
-        $result = $api->removeWishlistItem($data['userId'], $data['productId']);
+        $result = $api->removeWishlistItem($user['userId'], $data['productId']);
+        echo json_encode($result);
+    }
+
+    else if ($class == 'Products' && $method == 'addCartItem') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $user = requireAuth();  // Check token
+        $api = new Products($conn);
+        $result = $api->addCartItem($user['userId'], $data['productId'], 1);
+        echo json_encode($result);
+    }
+
+    else if ($class == 'Products' && $method == 'getCartItems') {
+        $user = requireAuth();  // Check token
+
+        $api = new Products($conn);
+        $result = $api->getCartItems($user['userId']);
+        echo json_encode($result);
+    }
+
+     else if ($class == 'Products' && $method == 'removeCartItem') {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $api = new Products($conn);
+        $result = $api->removeCartItem($user['userId'], $data['productId']);
+        echo json_encode($result);
+    }
+
+     else if ($class == 'Products' && $method == 'updateCartItemQuantity') {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $api = new Products($conn);
+        $result = $api->updateCartItemQuantity($user['userId'], $data['productId'], $data['quantity']);
         echo json_encode($result);
     }
     else {
