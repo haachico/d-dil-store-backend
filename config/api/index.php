@@ -46,8 +46,29 @@ try {
         $api = new Products($conn);
         $products = $api->getAllProducts();
         echo json_encode(['success' => true, 'data' => $products]);
+    } 
+
+    else if ($class == 'Products' && $method == 'addWishlistItem') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $api = new Products($conn);
+        $result = $api->addWishlistItem($data['userId'], $data['productId']);
+        echo json_encode($result);
+    }   
+
+    else if ($class == 'Products' && $method == 'getWishListITems') {
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        $api = new Products($conn);
+        $result = $api->getWishListITems($data['userId']);
+        echo json_encode($result);
     }
     
+    else if ($class == 'Products' && $method == 'removeWishlistItem') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $api = new Products($conn);
+        $result = $api->removeWishlistItem($data['userId'], $data['productId']);
+        echo json_encode($result);
+    }
     else {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
