@@ -8,7 +8,7 @@ class Auth {
     
     public function __construct($dbConnection) {
         $this->conn = $dbConnection;
-        $this->jwtHelper = new JwtHelper();
+        // $this->jwtHelper = new JwtHelper();
     }
     
     /**

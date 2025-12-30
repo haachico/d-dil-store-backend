@@ -22,6 +22,35 @@ class Products {
         return $products;
     }
 
+
+    public function getProductDetails($productId) {
+        $query = "SELECT * FROM products WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("i", $productId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows > 0) {
+            return $result->fetch_assoc();
+        } else {
+            return null;
+        }
+    }
+
+    public function getProductsByCategory($categoryId) {
+        $query = "SELECT * FROM products WHERE category_id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("i", $categoryId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $products = [];
+        while ($row = $result->fetch_assoc()) {
+            $products[] = $row;
+        }
+        return $products;
+    }
+
+
+
   public function addWishlistItem($userId, $productId) {
     $query = "INSERT INTO wishlist_items (user_id, product_id) VALUES (?, ?)";
     $stmt = $this->conn->prepare($query);
@@ -71,6 +100,8 @@ public function removeWishlistItem($userId, $productId) {
  public function addCartItem($userId, $productId, $quantity) {
  
     try {
+
+        print_r("Adding to cart: UserID=$userId, ProductID=$productId, Quantity=$quantity");
    $query = "INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)";
     $stmt = $this->conn->prepare($query);
     $stmt->bind_param("iii", $userId, $productId, $quantity);

@@ -13,6 +13,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/Procucts.php';
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/JwtHelper.php';
+require_once __DIR__ . '/Users.php';
 
 // Helper function to get token from request
 function getTokenFromRequest() {
@@ -75,6 +76,25 @@ try {
         echo json_encode(['success' => true, 'data' => $products]);
     } 
 
+    else if ($class == 'Products' && $method == 'getProductsByCategory') {
+        // $categoryId = $_GET['categoryId'] ?? 0;
+        $data = json_decode(file_get_contents('php://input'), true);
+        $api = new Products($conn);
+        $products = $api->getProductsByCategory($data['categoryId']);
+        echo json_encode(['success' => true, 'data' => $products]);
+    }
+    else if ($class == 'Products' && $method == 'getProductDetails') {
+        // $productId = $_GET['productId'] ?? 0;
+        $data = json_decode(file_get_contents('php://input'), true);
+        $api = new Products($conn);
+        $product = $api->getProductDetails($data['productId']);
+        if ($product) {
+            echo json_encode(['success' => true, 'data' => $product]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Product not found']);
+        }
+    }
+
     else if ($class == 'Products' && $method == 'addWishlistItem') {
         $user = requireAuth();  // Check token
         $data = json_decode(file_get_contents('php://input'), true);
@@ -127,6 +147,22 @@ try {
         $data = json_decode(file_get_contents('php://input'), true);
         $api = new Products($conn);
         $result = $api->updateCartItemQuantity($user['userId'], $data['productId'], $data['quantity']);
+        echo json_encode($result);
+    }
+    else if ($class == "Users" && $method == "saveAddress") {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $usersApi = new Users($conn);
+        $result = $usersApi->saveAddress(
+            $user['userId'],
+            $data['firstName'],
+            $data['lastName'],
+            $data['city'],
+            $data['state'],
+            $data['address'],
+            $data['contactNo'],
+            $data['pincode']
+        );
         echo json_encode($result);
     }
     else {
