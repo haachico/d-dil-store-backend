@@ -165,6 +165,21 @@ try {
         );
         echo json_encode($result);
     }
+
+    else if ($class == "Users" && $method == "getAddresses") {
+        $user = requireAuth();  // Check token
+        $usersApi = new Users($conn);
+        $addresses = $usersApi->getAddresses($user['userId']);
+        echo json_encode(['success' => true, 'data' => $addresses]);
+    }
+
+    else if ($class == "Users" && $method == "setDefaultAddress") {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $usersApi = new Users($conn);
+        $result = $usersApi->setDefaultAddress($user['userId'], $data['addressId']);
+        echo json_encode($result);
+    }
     else {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
