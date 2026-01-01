@@ -14,6 +14,8 @@ require_once __DIR__ . '/Procucts.php';
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/JwtHelper.php';
 require_once __DIR__ . '/Users.php';
+require_once __DIR__ . '/Payments.php';
+require_once __DIR__ . '/Orders.php';
 
 // Helper function to get token from request
 function getTokenFromRequest() {
@@ -180,6 +182,92 @@ try {
         $result = $usersApi->setDefaultAddress($user['userId'], $data['addressId']);
         echo json_encode($result);
     }
+    // ORDERS ROUTES
+    else if ($class == "orders" && $method == "createOrder") {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $ordersApi = new Orders($conn);
+        $result = $ordersApi->createOrder(
+            $user['userId'],
+            $data['items'],
+            $data['totalAmount'],
+            $data['addressId']
+        );
+        echo json_encode($result);
+    }
+
+    else if ($class == "orders" && $method == "getOrder") {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $ordersApi = new Orders($conn);
+        $result = $ordersApi->getOrder($data['orderId']);
+        echo json_encode($result);
+    }
+
+    else if ($class == "orders" && $method == "getUserOrders") {
+        $user = requireAuth();  // Check token
+        $ordersApi = new Orders($conn);
+        $result = $ordersApi->getUserOrders($user['userId']);
+        echo json_encode($result);
+    }
+
+    else if ($class == "orders" && $method == "updateOrderStatus") {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $ordersApi = new Orders($conn);
+        $result = $ordersApi->updateOrderStatus($data['orderId'], $data['status']);
+        echo json_encode($result);
+    }
+
+    else if ($class == "orders" && $method == "cancelOrder") {
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $ordersApi = new Orders($conn);
+        $result = $ordersApi->cancelOrder($data['orderId']);
+        echo json_encode($result);
+    }
+
+    // PAYMENTS ROUTES
+    else if($class == "payments" && $method == "createPayment"){
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $paymentsApi = new Payments($conn);
+        $result = $paymentsApi->createPayment(
+            $data['orderId'],
+            $data['amount'],
+            $data['currency'] ?? 'INR'
+        );
+        echo json_encode($result);
+    }
+
+    else if($class == "payments" && $method == "verifyPayment"){
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $paymentsApi = new Payments($conn);
+        $result = $paymentsApi->verifyPayment(
+            $data['orderId'],
+            $data['razorpayPaymentId'],
+            $data['razorpayOrderId'],
+            $data['signature']
+        );
+        echo json_encode($result);
+    }
+
+    else if($class == "payments" && $method == "getPaymentStatus"){
+        $user = requireAuth();  // Check token
+        $data = json_decode(file_get_contents('php://input'), true);
+        $paymentsApi = new Payments($conn);
+        $result = $paymentsApi->getPaymentByOrderId($data['orderId']);
+        echo json_encode($result);
+    }
+
+    else if($class == "payments" && $method == "getUserPaymentHistory"){
+        $user = requireAuth();  // Check token
+        $paymentsApi = new Payments($conn);
+        $result = $paymentsApi->getUserPaymentHistory($user['userId']);
+        echo json_encode($result);
+    }
+
     else {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
