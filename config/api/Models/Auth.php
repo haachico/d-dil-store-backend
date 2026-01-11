@@ -1,6 +1,6 @@
 <?php
 
-require_once 'JwtHelper.php';
+require_once __DIR__ . '/../db_config.php';
 
 class Auth {
     private $conn;
@@ -8,7 +8,8 @@ class Auth {
     
     public function __construct($dbConnection) {
         $this->conn = $dbConnection;
-        // $this->jwtHelper = new JwtHelper();
+        require_once __DIR__ . '/../JwtHelper.php';
+        $this->jwtHelper = new JwtHelper();
     }
     
     /**
@@ -98,4 +99,5 @@ class Auth {
         ];
     }
 }
+
 ?>

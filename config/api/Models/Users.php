@@ -1,6 +1,6 @@
 <?php
 
-require_once 'db_config.php';
+require_once __DIR__ . '/../db_config.php';
 
 class Users {
     private $conn;
@@ -8,7 +8,6 @@ class Users {
     public function __construct($dbConnection) {
         $this->conn = $dbConnection;
     }
-
 
     public function saveAddress($userId, $firstName, $lastName, $city, $state, $address, $contactNo, $pincode) {
         $query = "INSERT INTO addresses (user_id, first_name, last_name, city, state, address, contact_no, pin_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -34,22 +33,21 @@ class Users {
         return $addresses;
     }
 
-
- 
-public function setDefaultAddress($userId, $addressId) {
-    $query1 = "UPDATE addresses SET is_default = 0 WHERE user_id = ?";
-    $stmt1 = $this->conn->prepare($query1);
-    $stmt1->bind_param("i", $userId);
-    $stmt1->execute();
-    
-    $query2 = "UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?";
-    $stmt2 = $this->conn->prepare($query2);
-    $stmt2->bind_param("ii", $addressId, $userId);
-    if ($stmt2->execute()) {
-        return ['success' => true, 'message' => 'Default address updated successfully'];
-    } else {
-        return ['success' => false, 'message' => 'Failed to update default address'];
+    public function setDefaultAddress($userId, $addressId) {
+        $query1 = "UPDATE addresses SET is_default = 0 WHERE user_id = ?";
+        $stmt1 = $this->conn->prepare($query1);
+        $stmt1->bind_param("i", $userId);
+        $stmt1->execute();
+        
+        $query2 = "UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?";
+        $stmt2 = $this->conn->prepare($query2);
+        $stmt2->bind_param("ii", $addressId, $userId);
+        if ($stmt2->execute()) {
+            return ['success' => true, 'message' => 'Default address updated successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Failed to update default address'];
+        }
     }
 }
 
-}
+?>

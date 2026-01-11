@@ -1,6 +1,6 @@
 <?php
 
-require_once 'db_config.php';
+require_once __DIR__ . '/../db_config.php';
 
 class Payments {
     private $conn;

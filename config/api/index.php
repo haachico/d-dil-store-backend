@@ -10,12 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/db_config.php';
-require_once __DIR__ . '/Procucts.php';
-require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/JwtHelper.php';
-require_once __DIR__ . '/Users.php';
-require_once __DIR__ . '/Payments.php';
-require_once __DIR__ . '/Orders.php';
+require_once __DIR__ . '/Controllers/AuthController.php';
+require_once __DIR__ . '/Controllers/ProductsController.php';
+require_once __DIR__ . '/Controllers/UsersController.php';
+require_once __DIR__ . '/Controllers/OrdersController.php';
+require_once __DIR__ . '/Controllers/PaymentsController.php';
 
 // Helper function to get token from request
 function getTokenFromRequest() {
@@ -52,222 +52,153 @@ $method = $parts[1] ?? '';
 
 try {
     // AUTH ROUTES
-    if ($class == 'Auth' && $method == 'register') {
-        $data = json_decode(file_get_contents('php://input'), true);
-        $auth = new Auth($conn);  // ← Create Auth instance
-        $result = $auth->register(
-            $data['email'],
-            $data['password'],
-            $data['firstName'] ?? '',
-            $data['lastName'] ?? ''
-        );
-        echo json_encode($result);
-    }
-    
-    else if ($class == 'Auth' && $method == 'login') {
-        $data = json_decode(file_get_contents('php://input'), true);
-        $auth = new Auth($conn);  // ← Create Auth instance
-        $result = $auth->login($data['email'], $data['password']);
-        echo json_encode($result);
+    if ($class == 'Auth') {
+        $controller = new AuthController($conn);
+        
+        if ($method == 'register') {
+            $result = $controller->register();
+            echo json_encode($result);
+        } elseif ($method == 'login') {
+            $result = $controller->login();
+            echo json_encode($result);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
+        }
     }
     
     // PRODUCTS ROUTES
-    else if ($class == 'Products' && $method == 'getAllProducts') {
-        $api = new Products($conn);
-        $products = $api->getAllProducts();
-        echo json_encode(['success' => true, 'data' => $products]);
-    } 
-
-    else if ($class == 'Products' && $method == 'getProductsByCategory') {
-        // $categoryId = $_GET['categoryId'] ?? 0;
-        $data = json_decode(file_get_contents('php://input'), true);
-        $api = new Products($conn);
-        $products = $api->getProductsByCategory($data['categoryId']);
-        echo json_encode(['success' => true, 'data' => $products]);
-    }
-    else if ($class == 'Products' && $method == 'getProductDetails') {
-        // $productId = $_GET['productId'] ?? 0;
-        $data = json_decode(file_get_contents('php://input'), true);
-        $api = new Products($conn);
-        $product = $api->getProductDetails($data['productId']);
-        if ($product) {
-            echo json_encode(['success' => true, 'data' => $product]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Product not found']);
+    else if ($class == 'Products') {
+        $controller = new ProductsController($conn);
+        
+        // Public endpoints (no auth required)
+        if ($method == 'getAllProducts') {
+            $result = $controller->getAllProducts();
+            echo json_encode($result);
+        } elseif ($method == 'getProductsByCategory') {
+            $result = $controller->getProductsByCategory();
+            echo json_encode($result);
+        } elseif ($method == 'getProductDetails') {
+            $result = $controller->getProductDetails();
+            echo json_encode($result);
+        }
+        // Protected endpoints (auth required)
+        else {
+            $user = requireAuth();  // Check token
+            
+            switch ($method) {
+                case 'addWishlistItem':
+                    $result = $controller->addWishlistItem($user['userId']);
+                    break;
+                case 'getWishlistItems':
+                    $result = $controller->getWishlistItems($user['userId']);
+                    break;
+                case 'removeWishlistItem':
+                    $result = $controller->removeWishlistItem($user['userId']);
+                    break;
+                case 'addCartItem':
+                    $result = $controller->addCartItem($user['userId']);
+                    break;
+                case 'getCartItems':
+                    $result = $controller->getCartItems($user['userId']);
+                    break;
+                case 'removeCartItem':
+                    $result = $controller->removeCartItem($user['userId']);
+                    break;
+                case 'updateCartItemQuantity':
+                    $result = $controller->updateCartItemQuantity($user['userId']);
+                    break;
+                default:
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
+                    exit();
+            }
+            
+            echo json_encode($result);
         }
     }
-
-    else if ($class == 'Products' && $method == 'addWishlistItem') {
+    
+    // USERS ROUTES
+    else if ($class == 'Users') {
         $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $api = new Products($conn);
-        $result = $api->addWishlistItem($user['userId'], $data['productId']);
-        echo json_encode($result);
-    }   
-
-    else if ($class == 'Products' && $method == 'getWishlistItems') {
-        $user = requireAuth();  // Check token
-        $api = new Products($conn);
-        $result = $api->getWishlistItems($user['userId']);
+        $controller = new UsersController($conn);
+        
+        switch ($method) {
+            case 'saveAddress':
+                $result = $controller->saveAddress($user['userId']);
+                break;
+            case 'getAddresses':
+                $result = $controller->getAddresses($user['userId']);
+                break;
+            case 'setDefaultAddress':
+                $result = $controller->setDefaultAddress($user['userId']);
+                break;
+            default:
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
+                exit();
+        }
+        
         echo json_encode($result);
     }
     
-    else if ($class == 'Products' && $method == 'removeWishlistItem') {
-      $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $api = new Products($conn);
-        $result = $api->removeWishlistItem($user['userId'], $data['productId']);
-        echo json_encode($result);
-    }
-
-    else if ($class == 'Products' && $method == 'addCartItem') {
-        $data = json_decode(file_get_contents('php://input'), true);
-        $user = requireAuth();  // Check token
-        $api = new Products($conn);
-        $result = $api->addCartItem($user['userId'], $data['productId'], 1);
-        echo json_encode($result);
-    }
-
-    else if ($class == 'Products' && $method == 'getCartItems') {
-        $user = requireAuth();  // Check token
-
-        $api = new Products($conn);
-        $result = $api->getCartItems($user['userId']);
-        echo json_encode($result);
-    }
-
-     else if ($class == 'Products' && $method == 'removeCartItem') {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $api = new Products($conn);
-        $result = $api->removeCartItem($user['userId'], $data['productId']);
-        echo json_encode($result);
-    }
-
-     else if ($class == 'Products' && $method == 'updateCartItemQuantity') {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $api = new Products($conn);
-        $result = $api->updateCartItemQuantity($user['userId'], $data['productId'], $data['quantity']);
-        echo json_encode($result);
-    }
-    else if ($class == "Users" && $method == "saveAddress") {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $usersApi = new Users($conn);
-        $result = $usersApi->saveAddress(
-            $user['userId'],
-            $data['firstName'],
-            $data['lastName'],
-            $data['city'],
-            $data['state'],
-            $data['address'],
-            $data['contactNo'],
-            $data['pincode']
-        );
-        echo json_encode($result);
-    }
-
-    else if ($class == "Users" && $method == "getAddresses") {
-        $user = requireAuth();  // Check token
-        $usersApi = new Users($conn);
-        $addresses = $usersApi->getAddresses($user['userId']);
-        echo json_encode(['success' => true, 'data' => $addresses]);
-    }
-
-    else if ($class == "Users" && $method == "setDefaultAddress") {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $usersApi = new Users($conn);
-        $result = $usersApi->setDefaultAddress($user['userId'], $data['addressId']);
-        echo json_encode($result);
-    }
     // ORDERS ROUTES
-    else if ($class == "orders" && $method == "createOrder") {
+    else if ($class == 'orders') {
         $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $ordersApi = new Orders($conn);
-        $result = $ordersApi->createOrder(
-            $user['userId'],
-            $data['items'],
-            $data['totalAmount'],
-            $data['addressId']
-        );
+        $controller = new OrdersController($conn);
+        
+        switch ($method) {
+            case 'createOrder':
+                $result = $controller->createOrder($user['userId']);
+                break;
+            case 'getOrder':
+                $result = $controller->getOrder($user['userId']);
+                break;
+            case 'getUserOrders':
+                $result = $controller->getUserOrders($user['userId']);
+                break;
+            case 'updateOrderStatus':
+                $result = $controller->updateOrderStatus($user['userId']);
+                break;
+            case 'cancelOrder':
+                $result = $controller->cancelOrder($user['userId']);
+                break;
+            default:
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
+                exit();
+        }
+        
         echo json_encode($result);
     }
-
-    else if ($class == "orders" && $method == "getOrder") {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $ordersApi = new Orders($conn);
-        $result = $ordersApi->getOrder($data['orderId']);
-        echo json_encode($result);
-    }
-
-    else if ($class == "orders" && $method == "getUserOrders") {
-        $user = requireAuth();  // Check token
-        $ordersApi = new Orders($conn);
-        $result = $ordersApi->getUserOrders($user['userId']);
-        echo json_encode($result);
-    }
-
-    else if ($class == "orders" && $method == "updateOrderStatus") {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $ordersApi = new Orders($conn);
-        $result = $ordersApi->updateOrderStatus($data['orderId'], $data['status']);
-        echo json_encode($result);
-    }
-
-    else if ($class == "orders" && $method == "cancelOrder") {
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $ordersApi = new Orders($conn);
-        $result = $ordersApi->cancelOrder($data['orderId']);
-        echo json_encode($result);
-    }
-
+    
     // PAYMENTS ROUTES
-    else if($class == "payments" && $method == "createPayment"){
+    else if ($class == 'payments') {
         $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $paymentsApi = new Payments($conn);
-        $result = $paymentsApi->createPayment(
-            $data['orderId'],
-            $data['amount'],
-            $data['currency'] ?? 'INR'
-        );
+        $controller = new PaymentsController($conn);
+        
+        switch ($method) {
+            case 'createPayment':
+                $result = $controller->createPayment($user['userId']);
+                break;
+            case 'verifyPayment':
+                $result = $controller->verifyPayment($user['userId']);
+                break;
+            case 'getPaymentStatus':
+                $result = $controller->getPaymentStatus($user['userId']);
+                break;
+            case 'getUserPaymentHistory':
+                $result = $controller->getUserPaymentHistory($user['userId']);
+                break;
+            default:
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
+                exit();
+        }
+        
         echo json_encode($result);
     }
-
-    else if($class == "payments" && $method == "verifyPayment"){
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $paymentsApi = new Payments($conn);
-        $result = $paymentsApi->verifyPayment(
-            $data['orderId'],
-            $data['razorpayPaymentId'],
-            $data['razorpayOrderId'],
-            $data['signature']
-        );
-        echo json_encode($result);
-    }
-
-    else if($class == "payments" && $method == "getPaymentStatus"){
-        $user = requireAuth();  // Check token
-        $data = json_decode(file_get_contents('php://input'), true);
-        $paymentsApi = new Payments($conn);
-        $result = $paymentsApi->getPaymentByOrderId($data['orderId']);
-        echo json_encode($result);
-    }
-
-    else if($class == "payments" && $method == "getUserPaymentHistory"){
-        $user = requireAuth();  // Check token
-        $paymentsApi = new Payments($conn);
-        $result = $paymentsApi->getUserPaymentHistory($user['userId']);
-        echo json_encode($result);
-    }
-
+    
     else {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
@@ -277,3 +208,4 @@ try {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>
+
